@@ -44,6 +44,54 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Swagger UI: http://localhost:8000/docs  
 - ReDoc: http://localhost:8000/redoc  
 - Health: http://localhost:8000/api/v1/health  
+- Root `http://localhost:8000/` returns 404 — use `/docs` or `/api/v1/health` instead.
+
+## MongoDB (local Mac via Homebrew)
+
+**One-time install** (you do not repeat these every day):
+
+```bash
+brew tap mongodb/brew
+brew trust mongodb/brew
+brew install mongodb-community@7.0
+brew services start mongodb-community@7.0
+```
+
+**Start** MongoDB (after install, or if you stopped it):
+
+```bash
+brew services start mongodb-community@7.0
+```
+
+**Stop** MongoDB:
+
+```bash
+brew services stop mongodb-community@7.0
+```
+
+**Restart** MongoDB:
+
+```bash
+brew services restart mongodb-community@7.0
+```
+
+**Check status:**
+
+```bash
+brew services list | grep mongo
+```
+
+**MongoDB Compass** connection string (matches `.env`):
+
+```text
+mongodb://localhost:27017
+```
+
+Database name: **`browser_automation`** (`MONGODB_DB_NAME` in `.env`).
+
+**Docker alternative** (if you use Docker Desktop): `docker compose up -d` in this repo — stop with `docker compose down`.
+
+**Atlas alternative:** set `MONGODB_URL` to your `mongodb+srv://...` string; no local `brew services` needed.
 
 ## Environment variables (`.env`)
 
@@ -113,7 +161,7 @@ Flow: **plan (AI)** → **run Playwright steps** → **clean data** → **save r
 
 | Method | Path |
 |--------|------|
-| GET | `/health` | MongoDB + OpenAI config status |
+| GET | `/health` | MongoDB + AI provider status |
 
 ## Postman
 
