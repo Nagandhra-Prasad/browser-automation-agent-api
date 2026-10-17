@@ -31,3 +31,6 @@ async def ensure_indexes() -> None:
     await db.tasks.create_index([("user_id", 1), ("created_at", -1)])
     await db.sessions.create_index([("task_id", 1), ("start_time", -1)])
     await db.results.create_index([("session_id", 1)])
+    await db.conversations.create_index([("user_id", 1), ("updated_at", -1)])
+    await db.messages.create_index([("conversation_id", 1), ("created_at", 1)])
+    await db.messages.create_index([("user_id", 1), ("created_at", -1)])

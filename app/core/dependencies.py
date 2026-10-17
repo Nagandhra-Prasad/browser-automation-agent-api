@@ -26,4 +26,16 @@ async def get_current_user_id(
     user = await UserRepository().get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
+    return user_id
+
+
+async def get_current_admin_id(user_id: str = Depends(get_current_user_id)) -> str:
+    user = await UserRepository().get_by_id(user_id)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user_id

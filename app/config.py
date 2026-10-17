@@ -39,8 +39,13 @@ class Settings(BaseSettings):
     playwright_headless: bool = True
     playwright_timeout_ms: int = 30000
     automation_max_steps: int = 15
+    playwright_browsers_path: str = ""
+    playwright_auto_install: bool = True
 
     cors_origins: str = "http://localhost:4200,http://127.0.0.1:4200"
+
+    # Code required to register as admin (set in production)
+    admin_registration_code: str = "admin123"
 
     @property
     def cors_origin_list(self) -> list[str]:

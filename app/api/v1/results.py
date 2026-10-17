@@ -3,7 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.dependencies import get_current_user_id
 from app.repositories.result_repository import ResultRepository
 from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.result import ResultResponse
+from app.schemas.result_feed import ResultTableRow
+from app.services.result_feed_service import ResultFeedService
 
 router = APIRouter()
 
@@ -17,6 +20,13 @@ def _result_response(row: dict) -> ResultResponse:
         summary=row.get("summary"),
         timestamp=row["timestamp"],
     )
+
+
+@router.get("/table", response_model=list[ResultTableRow])
+async def results_table(user_id: str = Depends(get_current_user_id)) -> list[ResultTableRow]:
+    user = await UserRepository().get_by_id(user_id)
+    is_admin = user and user.get("role") == "admin"
+    return await ResultFeedService().table_for_user(user_id, admin=is_admin)
 
 
 @router.get("/history", response_model=list[ResultResponse])
@@ -48,7 +58,9 @@ async def result_by_session(
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
 
-    task = await TaskRepository().get_by_id(row["task_id"], user_id=user_id)
+    user = await UserRepository().get_by_id(user_id)
+    is_admin = user and user.get("role") == "admin"
+    task = await TaskRepository().get_by_id(row["task_id"], user_id=None if is_admin else user_id)
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
 

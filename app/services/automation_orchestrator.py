@@ -6,6 +6,7 @@ from app.schemas.task import TaskStatus
 from app.services.ai_planner import AIPlannerService
 from app.services.browser_automation import BrowserAutomationService
 from app.services.data_processor import DataProcessor
+from app.services.plan_sanitizer import ensure_job_search_plan
 
 
 class AutomationOrchestrator:
@@ -38,6 +39,7 @@ class AutomationOrchestrator:
 
         await self._tasks.update_status(task_id, TaskStatus.PLANNING)
         plan: TaskPlan = self._planner.plan_task(task["command"], task["website"])
+        plan = ensure_job_search_plan(plan, task["command"], task["website"])
         plan_dict = plan.model_dump()
         await self._tasks.update_status(task_id, TaskStatus.RUNNING, plan=plan_dict)
 
@@ -46,7 +48,7 @@ class AutomationOrchestrator:
 
         try:
             browser = BrowserAutomationService(headless=headless)
-            raw = await browser.execute_plan(plan, session_id)
+            raw = await browser.execute_plan(plan, session_id, command=task["command"])
             structured = self._processor.structure_extracted(raw, task["command"])
             summary = self._planner.summarize_results(task["command"], structured)
 
@@ -55,6 +57,7 @@ class AutomationOrchestrator:
                 task_id=task_id,
                 data=structured,
                 summary=summary,
+                user_id=user_id,
             )
             await self._sessions.complete(session_id, "completed")
             await self._tasks.update_status(task_id, TaskStatus.COMPLETED)

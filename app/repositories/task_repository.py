@@ -60,6 +60,9 @@ class TaskRepository:
         cursor = self._col.find({"user_id": user_id}).sort("created_at", -1).limit(limit)
         return [self._serialize(doc) async for doc in cursor]
 
+    async def count_all(self) -> int:
+        return await self._col.count_documents({})
+
     async def update_status(
         self,
         task_id: str,

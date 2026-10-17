@@ -22,10 +22,10 @@ output a JSON object with this exact shape:
   ]
 }
 Rules:
-- First step must be navigate to the website (or a search URL if appropriate).
-- Use simple, stable CSS selectors when possible (input[name=...], button[type=submit], etc.).
-- Prefer at most 12 steps.
-- For job/search tasks, navigate to site then type in search box and extract listing text.
+- First step must be navigate to the website URL provided (do not change domain).
+- For indeed.com: ONLY use navigate, wait, extract on body — do NOT use input[name=q] or Google selectors.
+- Never use input[name=q] unless the website is google.com.
+- Prefer at most 8 steps.
 - Return ONLY valid JSON, no markdown."""
 
 
@@ -42,29 +42,36 @@ class AIPlannerService:
             data = self._llm.chat_json(SYSTEM_PROMPT, user_content)
             return TaskPlan.model_validate(data)
         except Exception as exc:
-            logger.warning("AI planning failed, using fallback: %s", exc)
+            msg = str(exc)
+            if "Connection" in msg or "connect" in msg.lower():
+                logger.info("AI planning skipped (LLM unreachable), using fallback plan")
+            else:
+                logger.warning("AI planning failed, using fallback: %s", exc)
             return self._fallback_plan(command, website)
 
     @staticmethod
     def _fallback_plan(command: str, website: str) -> TaskPlan:
+        from app.services.job_search import JobSearchService
+
+        target = website if "indeed.com" in website else JobSearchService.build_indeed_url(command)
         return TaskPlan(
             intent=command,
-            extraction_goal="Page title and visible text snippets related to the query",
+            extraction_goal="Job titles, companies, locations, and salaries from listings",
             steps=[
                 PlanStep(
                     action="navigate",
-                    value=website,
-                    description="Open target website",
+                    value=target,
+                    description="Open Indeed job search results",
                 ),
                 PlanStep(
                     action="wait",
-                    value="2000",
-                    description="Wait for page load",
+                    value="4000",
+                    description="Wait for listings to load",
                 ),
                 PlanStep(
                     action="extract",
                     selector="body",
-                    description="Extract main page content",
+                    description="Extract job listing text",
                 ),
             ],
         )
@@ -83,5 +90,9 @@ class AIPlannerService:
                 json_mode=False,
             )
         except Exception as exc:
-            logger.warning("AI summarize failed: %s", exc)
+            msg = str(exc)
+            if "Connection" in msg or "connect" in msg.lower() or "not reachable" in msg.lower():
+                logger.debug("AI summarize skipped (LLM unreachable)")
+            else:
+                logger.warning("AI summarize failed: %s", exc)
             return f"Automation completed for: {command}"

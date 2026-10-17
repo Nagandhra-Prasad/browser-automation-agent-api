@@ -28,7 +28,7 @@ cd browser-automation-agent-api
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium
+python -m playwright install chromium   # or: auto-downloads to `.pw-browsers/` on API startup (dev)
 cp .env.example .env
 # Edit .env: MONGODB_URL, JWT_SECRET
 # Free AI (recommended):
@@ -148,10 +148,48 @@ Authorization: Bearer <access_token>
 
 Flow: **plan (AI)** → **run Playwright steps** → **clean data** → **save result** → task `status: completed`.
 
+### Chat (for Angular UI)
+
+| Method | Path | Body |
+|--------|------|------|
+| GET | `/chat/conversations` | List user conversations |
+| POST | `/chat/conversations` | `{ "title" }` — start new thread |
+| GET | `/chat/conversations/{id}` | Conversation + all **messages** |
+| POST | `/chat` | `{ "message", "conversation_id"?, "website"?, "headless"? }` |
+
+MongoDB collections: **`conversations`**, **`messages`** (user + agent text; agent row stores full AI metadata: jobs, status, plan, etc.).
+
+- **"hi" / greetings** → instant reply, no browser (`status: conversation`).
+- **Job questions** → agent opens **Google Jobs** automatically (no URL from user) → returns `jobs[]` table fields.
+- Job runs: create task → automation → `reply`, `summary`, `data`, `jobs`.
+- Every send persists **user message** and **agent reply** for UI refresh/history.
+
+### Users (management)
+
+| Method | Path |
+|--------|------|
+| GET | `/users` | List all users — **admin JWT only** |
+
+### Dashboard
+
+| Method | Path |
+|--------|------|
+| GET | `/dashboard/summary` | Stats for user or admin |
+
+### Auth roles
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/auth/register` | `{ name, email, password, role: "user"\|"admin", admin_code? }` |
+| POST | `/auth/onboarding-complete` | Mark guided tour finished |
+
+Admin registration requires `admin_code` matching `ADMIN_REGISTRATION_CODE` in `.env` (default `admin123` for dev).
+
 ### Results & reports
 
 | Method | Path |
 |--------|------|
+| GET | `/results/table` | Job results table (own rows; **admin** sees all users) |
 | GET | `/results/history` |
 | GET | `/results/task/{task_id}` |
 | GET | `/results/session/{session_id}` |
@@ -171,6 +209,14 @@ Flow: **plan (AI)** → **run Playwright steps** → **clean data** → **save r
 4. Run **Tasks - Create** (saves `taskId`)
 5. Run **Automation - Start** (may take 30–60s)
 6. Run **Results - By Task** or **Reports - Download JSON**
+
+## Frontend repo (`browser-automation-agent-web`)
+
+A separate Angular app is wired to this API:
+
+- Set `apiUrl: 'http://localhost:8000/api/v1'` in `browser-automation-web/src/environments/environment.ts`
+- Run API on port **8000**, frontend with `ng serve` on **4200**
+- Chat UI uses **`POST /api/v1/chat`** (creates task + runs automation + returns agent reply)
 
 ## Angular frontend integration
 
